@@ -256,6 +256,7 @@
     <div class="weather-card">
       <div class="error-emoji">📍</div>
       <p id="error-msg">Unable to get your location</p>
+      <p id="file-hint" class="hidden" style="font-size:0.8rem;opacity:0.6;margin-bottom:16px;">Tip: For full features, serve via HTTP instead of opening as a local file.</p>
       <div class="search-box">
         <input type="text" id="city-input" placeholder="Search city..." autocomplete="off">
         <button class="btn" id="search-btn">Go</button>
@@ -468,7 +469,13 @@
         const { lat, lon } = await getLocation();
         await loadWeather(lat, lon);
       } catch (err) {
-        $errorMsg.textContent = err.message;
+        const isFileProtocol = window.location.protocol === 'file:';
+        if (isFileProtocol) {
+          $errorMsg.textContent = 'Location unavailable. Search for a city below.';
+          document.getElementById('file-hint').classList.remove('hidden');
+        } else {
+          $errorMsg.textContent = err.message;
+        }
         showScreen('error');
       }
     }
@@ -486,13 +493,17 @@
     $searchBtn.addEventListener('click', async () => {
       const val = $cityInput.value.trim();
       if (!val) return;
+      $searchBtn.textContent = '...';
       showScreen('loading');
       try {
         const result = await searchCity(val);
         await loadWeather(result.lat, result.lon, result.name);
       } catch (err) {
-        $errorMsg.textContent = err.message;
+        $errorMsg.textContent = err.message || 'Search failed. Please check your connection.';
+        $cityInput.value = val;
         showScreen('error');
+      } finally {
+        $searchBtn.textContent = 'Go';
       }
     });
 
