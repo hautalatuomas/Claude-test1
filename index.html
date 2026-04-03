@@ -377,17 +377,34 @@
           reject(new Error('Geolocation is not supported by your browser'));
           return;
         }
+        let settled = false;
+        const timer = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            reject(new Error('Location request timed out. Search for a city instead.'));
+          }
+        }, 5000);
         navigator.geolocation.getCurrentPosition(
-          pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-          err => {
-            const messages = {
-              1: 'Location access denied. Search for a city instead.',
-              2: 'Location unavailable. Please try again.',
-              3: 'Location request timed out. Please try again.',
-            };
-            reject(new Error(messages[err.code] || 'Could not get location'));
+          pos => {
+            if (!settled) {
+              settled = true;
+              clearTimeout(timer);
+              resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+            }
           },
-          { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
+          err => {
+            if (!settled) {
+              settled = true;
+              clearTimeout(timer);
+              const messages = {
+                1: 'Location access denied. Search for a city instead.',
+                2: 'Location unavailable. Search for a city instead.',
+                3: 'Location request timed out. Search for a city instead.',
+              };
+              reject(new Error(messages[err.code] || 'Could not get location'));
+            }
+          },
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
         );
       });
     }
